@@ -1,0 +1,10 @@
+[package]
+name = "shopping"
+version = "0.1.0"
+authors = ["Max Holder <mxhold@gmail.com>"]
+
+[dependencies]
+csv = "1"
+serde = "1"
+serde_derive = "1"
+error-chain = "0.12"
