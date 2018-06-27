@@ -7,6 +7,7 @@ extern crate error_chain;
 
 use std::fs::File;
 use std::fmt;
+use std::collections::HashMap;
 
 mod errors{
     error_chain! { }
@@ -14,7 +15,7 @@ mod errors{
 
 use errors::*;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Hash)]
 struct Department(String);
 
 impl fmt::Display for Department {
@@ -23,18 +24,37 @@ impl fmt::Display for Department {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Hash)]
 struct Product {
     name: String,
     department: Department,
 }
 
-//struct Quantity(String);
-//
-//struct Recipe {
-//    name: String,
-//    ingredients: HashMap<Product, Quantity>,
-//}
+#[derive(Debug, Deserialize, PartialEq)]
+struct Quantity(String);
+
+#[derive(Debug, Deserialize)]
+struct UnresolvedRecipe {
+    name: String,
+    filename: String,
+}
+
+impl UnresolvedRecipe {
+    fn resolve(self, products: &Vec<Product>) -> Result<Recipe> {
+        let ingredients: HashMap<Product, Quantity> = HashMap::new();
+        // TODO
+        Ok(Recipe {
+            name: self.name,
+            ingredients: ingredients,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct Recipe {
+    name: String,
+    ingredients: HashMap<Product, Quantity>,
+}
 
 fn load_departments(path: &str) -> Result<Vec<Department>>  {
     let file = File::open(path).chain_err(|| "unable to open departments file")?;
@@ -63,12 +83,29 @@ fn load_products(departments: &Vec<Department>, path: &str) -> Result<Vec<Produc
     Ok(products)
 }
 
+fn load_recipes(products: &Vec<Product>, path: &str) -> Result<Vec<Recipe>> {
+    let file = File::open(path).chain_err(|| "unable to open recipes file")?;
+    let mut reader = csv::Reader::from_reader(file);
+    let mut recipes: Vec<Recipe> = Vec::new();
+    for result in reader.deserialize() {
+        let unresolved_recipe: UnresolvedRecipe = result.chain_err(|| "unable to parse recipe")?;
+        let recipe = unresolved_recipe.resolve(products).chain_err(|| "unable to resolve recipe")?;
+
+        recipes.push(recipe);
+    }
+    Ok(recipes)
+}
+
 fn run() -> Result<()> {
     let departments: Vec<Department> = load_departments("inputs/departments.csv")?;
     let products: Vec<Product> = load_products(&departments, "inputs/products.csv")?;
 
+    let recipes: Vec<Recipe> = load_recipes(&products, "inputs/recipes.csv")?;
+
     println!("{:?}", products);
     println!("{:?}", departments);
+    println!("{:?}", recipes);
+
 
 
     Ok(())
