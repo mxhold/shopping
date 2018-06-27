@@ -120,16 +120,37 @@ fn load_recipes(products: &Vec<Product>, path: &str) -> Result<Vec<Recipe>> {
     Ok(recipes)
 }
 
+fn load_inventory(products: &Vec<Product>, path: &str) -> Result<HashMap<Product, Quantity>> {
+    let file = File::open(path).chain_err(|| "unable to open inventory file")?;
+    let mut reader = csv::Reader::from_reader(file);
+    let mut inventory: HashMap<Product, Quantity> = HashMap::new();
+
+    for result in reader.deserialize() {
+        let ingredient: UnresolvedIngredient = result.chain_err(|| "unable to parse recipe ingredient")?;
+        let product = products.iter().find(|p| p.name == ingredient.ingredient);
+        match product {
+            Some(product) => {
+                inventory.insert(product.clone(), ingredient.quantity);
+            }
+            None => {
+                bail!("unrecognized ingredient \"{}\"", ingredient.ingredient)
+            }
+        }
+    }
+
+    Ok(inventory)
+}
+
 fn run() -> Result<()> {
     let departments: Vec<Department> = load_departments("inputs/departments.csv")?;
     let products: Vec<Product> = load_products(&departments, "inputs/products.csv")?;
-
     let recipes: Vec<Recipe> = load_recipes(&products, "inputs/recipes.csv")?;
+    let inventory: HashMap<Product, Quantity> = load_inventory(&products, "inputs/inventory.csv")?;
 
-    println!("{:?}", products);
-    println!("{:?}", departments);
-    println!("{:?}", recipes);
-
+    println!("products: {:?}", products);
+    println!("departments: {:?}", departments);
+    println!("recipes: {:?}", recipes);
+    println!("inventory: {:?}", inventory);
 
 
     Ok(())
