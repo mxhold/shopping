@@ -8,6 +8,7 @@ extern crate error_chain;
 use std::fs::File;
 use std::fmt;
 use std::collections::HashMap;
+use std::path::Path;
 
 mod errors{
     error_chain! { }
@@ -15,7 +16,7 @@ mod errors{
 
 use errors::*;
 
-#[derive(Debug, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Hash, Clone)]
 struct Department(String);
 
 impl fmt::Display for Department {
@@ -24,7 +25,7 @@ impl fmt::Display for Department {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, PartialEq, Eq, Hash, Clone)]
 struct Product {
     name: String,
     department: Department,
@@ -39,10 +40,38 @@ struct UnresolvedRecipe {
     filename: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct UnresolvedIngredient {
+    ingredient: String,
+    quantity: Quantity,
+}
+
+#[derive(Debug)]
+struct Recipe<> {
+    name: String,
+    ingredients: HashMap<Product, Quantity>,
+}
+
 impl UnresolvedRecipe {
     fn resolve(self, products: &Vec<Product>) -> Result<Recipe> {
-        let ingredients: HashMap<Product, Quantity> = HashMap::new();
-        // TODO
+        let mut ingredients: HashMap<Product, Quantity> = HashMap::new();
+        let filepath = Path::new("inputs/recipes").join(self.filename);
+        let file = File::open(filepath).chain_err(|| "unable to open recipe")?;
+        let mut reader = csv::Reader::from_reader(file);
+
+        for result in reader.deserialize() {
+            let ingredient: UnresolvedIngredient = result.chain_err(|| "unable to parse recipe ingredient")?;
+            let product = products.iter().find(|p| p.name == ingredient.ingredient);
+            match product {
+                Some(product) => {
+                    ingredients.insert(product.clone(), ingredient.quantity);
+                }
+                None => {
+                    bail!("unrecognized ingredient \"{}\"", ingredient.ingredient)
+                }
+            }
+        }
+
         Ok(Recipe {
             name: self.name,
             ingredients: ingredients,
@@ -50,11 +79,6 @@ impl UnresolvedRecipe {
     }
 }
 
-#[derive(Debug)]
-struct Recipe {
-    name: String,
-    ingredients: HashMap<Product, Quantity>,
-}
 
 fn load_departments(path: &str) -> Result<Vec<Department>>  {
     let file = File::open(path).chain_err(|| "unable to open departments file")?;
