@@ -31,7 +31,7 @@ struct Product {
     department: Department,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 struct Quantity(String);
 
 #[derive(Debug, Deserialize)]
@@ -46,8 +46,8 @@ struct UnresolvedRecipe {
     filename: String,
 }
 
-#[derive(Debug)]
-struct Recipe<> {
+#[derive(Debug, Clone)]
+struct Recipe {
     name: String,
     ingredients: HashMap<Product, Quantity>,
 }
@@ -128,7 +128,7 @@ impl UnresolvedRecipe {
 
         Ok(Recipe {
             name: self.name,
-            ingredients: ingredients,
+            ingredients,
         })
     }
 }
@@ -156,22 +156,47 @@ fn csv_reader<P: AsRef<Path> + fmt::Debug>(path: P) -> Result<csv::Reader<File>>
     csv::Reader::from_path(&path).chain_err(|| format!("unable to open file #{:?}", &path))
 }
 
-//fn load_planned_meals(recipes: &Vec<Recipe>, path: &str) -> Result<Vec<PlannedMeal>> {
-//    let file = File::open(&path)
-//}
+impl UnresolvedPlannedMeal {
+    fn resolve(self, recipes: &Vec<Recipe>) -> Result<PlannedMeal> {
+
+        let recipe = recipes.iter().find(|r| r.name == self.recipe);
+
+        if recipe.is_none() {
+            bail!("unrecognized recipe \"{}\"", self.recipe);
+        }
+
+        Ok(PlannedMeal {
+            day: self.day,
+            meal: self.meal,
+            recipe: recipe.unwrap().clone(),
+        })
+    }
+}
+
+fn load_planned_meals(recipes: &Vec<Recipe>, path: &str) -> Result<Vec<PlannedMeal>> {
+    let mut planned_meals: Vec<PlannedMeal> = Vec::new();
+    for result in csv_reader(&path)?.deserialize() {
+        let unresolved_planned_meal: UnresolvedPlannedMeal = result.chain_err(|| "unable to parse plan")?;
+        let planned_meal: PlannedMeal = unresolved_planned_meal.resolve(recipes).chain_err(|| "unable to resolve plan")?;
+
+        planned_meals.push(planned_meal);
+    }
+    Ok(planned_meals)
+}
 
 fn run() -> Result<()> {
     let departments: Vec<Department> = load_departments("inputs/departments.csv")?;
     let products: Vec<Product> = load_products(&departments, "inputs/products.csv")?;
     let recipes: Vec<Recipe> = load_recipes(&products, "inputs/recipes.csv")?;
     let inventory: HashMap<Product, Quantity> = load_ingredients(&products, "inputs/inventory.csv")?;
-//    let planned_meals: Vec<PlannedMeal> = load_planned_meals(&recipes, "inputs/plan.csv")?;
+    let planned_meals: Vec<PlannedMeal> = load_planned_meals(&recipes, "inputs/plan.csv")?;
 
     println!("products: {:?}", products);
     println!("departments: {:?}", departments);
     println!("recipes: {:?}", recipes);
     println!("inventory: {:?}", inventory);
-
+    println!("planned_meals: {:?}", planned_meals);
+    
     Ok(())
 }
 
