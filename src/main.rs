@@ -35,6 +35,12 @@ struct Product {
 struct Quantity(String);
 
 #[derive(Debug, Deserialize)]
+struct UnresolvedIngredient {
+    ingredient: String,
+    quantity: Quantity,
+}
+
+#[derive(Debug, Deserialize)]
 struct UnresolvedRecipe {
     name: String,
     filename: String,
@@ -47,9 +53,72 @@ struct Recipe<> {
 }
 
 #[derive(Debug, Deserialize)]
-struct UnresolvedIngredient {
-    ingredient: String,
-    quantity: Quantity,
+enum Day {
+    Sunday,
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+}
+
+#[derive(Debug, Deserialize)]
+enum Meal {
+    Breakfast,
+    Lunch,
+    Dinner,
+    Snack,
+}
+
+#[derive(Debug, Deserialize)]
+struct UnresolvedPlannedMeal {
+    day: Day,
+    meal: Meal,
+    recipe: String,
+}
+
+#[derive(Debug)]
+struct PlannedMeal {
+    day: Day,
+    meal: Meal,
+    recipe: Recipe,
+}
+
+fn load_departments(path: &str) -> Result<Vec<Department>>  {
+    let file = File::open(&path).chain_err(|| "unable to open departments file")?;
+    let mut reader = csv::Reader::from_reader(file);
+    let mut departments: Vec<Department> = Vec::new();
+    for result in reader.deserialize() {
+        let department: Department = result.chain_err(|| "unable to parse department")?;
+        departments.push(department);
+    }
+    Ok(departments)
+}
+
+fn load_products(departments: &Vec<Department>, path: &str) -> Result<Vec<Product>> {
+    let mut products: Vec<Product> = Vec::new();
+    for result in csv_reader(&path)?.deserialize() {
+        let product: Product = result.chain_err(|| "unable to parse product")?;
+
+        if departments.contains(&product.department) {
+            products.push(product);
+        } else {
+            bail!("unrecognized department \"{}\"", &product.department);
+        }
+    }
+    Ok(products)
+}
+
+fn load_recipes(products: &Vec<Product>, path: &str) -> Result<Vec<Recipe>> {
+    let mut recipes: Vec<Recipe> = Vec::new();
+    for result in csv_reader(&path)?.deserialize() {
+        let unresolved_recipe: UnresolvedRecipe = result.chain_err(|| "unable to parse recipe")?;
+        let recipe = unresolved_recipe.resolve(products).chain_err(|| "unable to resolve recipe")?;
+
+        recipes.push(recipe);
+    }
+    Ok(recipes)
 }
 
 impl UnresolvedRecipe {
@@ -64,52 +133,10 @@ impl UnresolvedRecipe {
     }
 }
 
-fn load_departments(path: &str) -> Result<Vec<Department>>  {
-    let file = File::open(path).chain_err(|| "unable to open departments file")?;
-    let mut reader = csv::Reader::from_reader(file);
-    let mut departments: Vec<Department> = Vec::new();
-    for result in reader.deserialize() {
-        let department: Department = result.chain_err(|| "unable to parse department")?;
-        departments.push(department);
-    }
-    Ok(departments)
-}
-
-fn load_products(departments: &Vec<Department>, path: &str) -> Result<Vec<Product>> {
-    let file = File::open(path).chain_err(|| "unable to open products file")?;
-    let mut reader = csv::Reader::from_reader(file);
-    let mut products: Vec<Product> = Vec::new();
-    for result in reader.deserialize() {
-        let product: Product = result.chain_err(|| "unable to parse product")?;
-
-        if departments.contains(&product.department) {
-            products.push(product);
-        } else {
-            bail!("unrecognized department \"{}\"", &product.department);
-        }
-    }
-    Ok(products)
-}
-
-fn load_recipes(products: &Vec<Product>, path: &str) -> Result<Vec<Recipe>> {
-    let file = File::open(path).chain_err(|| "unable to open recipes file")?;
-    let mut reader = csv::Reader::from_reader(file);
-    let mut recipes: Vec<Recipe> = Vec::new();
-    for result in reader.deserialize() {
-        let unresolved_recipe: UnresolvedRecipe = result.chain_err(|| "unable to parse recipe")?;
-        let recipe = unresolved_recipe.resolve(products).chain_err(|| "unable to resolve recipe")?;
-
-        recipes.push(recipe);
-    }
-    Ok(recipes)
-}
-
 fn load_ingredients<P: AsRef<Path> + fmt::Debug>(products: &Vec<Product>, path: P) -> Result<HashMap<Product, Quantity>> {
-    let file = File::open(&path).chain_err(|| format!("unable to open file {:?}", &path))?;
-    let mut reader = csv::Reader::from_reader(file);
     let mut ingredients: HashMap<Product, Quantity> = HashMap::new();
 
-    for result in reader.deserialize() {
+    for result in csv_reader(&path)?.deserialize() {
         let ingredient: UnresolvedIngredient = result.chain_err(|| "unable to parse ingredient")?;
         let product = products.iter().find(|p| p.name == ingredient.ingredient);
         match product {
@@ -125,11 +152,20 @@ fn load_ingredients<P: AsRef<Path> + fmt::Debug>(products: &Vec<Product>, path: 
     Ok(ingredients)
 }
 
+fn csv_reader<P: AsRef<Path> + fmt::Debug>(path: P) -> Result<csv::Reader<File>> {
+    csv::Reader::from_path(&path).chain_err(|| format!("unable to open file #{:?}", &path))
+}
+
+//fn load_planned_meals(recipes: &Vec<Recipe>, path: &str) -> Result<Vec<PlannedMeal>> {
+//    let file = File::open(&path)
+//}
+
 fn run() -> Result<()> {
     let departments: Vec<Department> = load_departments("inputs/departments.csv")?;
     let products: Vec<Product> = load_products(&departments, "inputs/products.csv")?;
     let recipes: Vec<Recipe> = load_recipes(&products, "inputs/recipes.csv")?;
     let inventory: HashMap<Product, Quantity> = load_ingredients(&products, "inputs/inventory.csv")?;
+//    let planned_meals: Vec<PlannedMeal> = load_planned_meals(&recipes, "inputs/plan.csv")?;
 
     println!("products: {:?}", products);
     println!("departments: {:?}", departments);
@@ -153,7 +189,7 @@ fn main() {
             for frame in frames.iter() {
                 for symbol in frame.symbols().iter() {
                     if let (Some(file), Some(lineno)) = (symbol.filename(), symbol.lineno()) {
-                        if file.display().to_string()[0..3] == "src".to_string(){
+                        if file.display().to_string()[0..3] == "src".to_string() {
                             println!("{}:{}", file.display().to_string(), lineno);
                         }
                     }
