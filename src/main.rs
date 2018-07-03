@@ -9,6 +9,7 @@ use std::fs::File;
 use std::fmt;
 use std::collections::HashMap;
 use std::path::Path;
+use std::ops::Add;
 
 mod errors{
     error_chain! { }
@@ -33,6 +34,15 @@ struct Product {
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 struct Quantity(String);
+
+impl Add for Quantity {
+    type Output = Quantity;
+
+    fn add(self, other: Quantity) -> Quantity {
+        println!("adding: {:?} + {:?}", &self, &other);
+        Quantity(format!("{}+{}", self.0, other.0))
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct UnresolvedIngredient {
@@ -141,6 +151,9 @@ fn load_ingredients<P: AsRef<Path> + fmt::Debug>(products: &Vec<Product>, path: 
         let product = products.iter().find(|p| p.name == ingredient.ingredient);
         match product {
             Some(product) => {
+                if ingredients.contains_key(&product) {
+                    bail!("encountered duplicate ingredient `{:?}`", product)
+                }
                 ingredients.insert(product.clone(), ingredient.quantity);
             }
             None => {
@@ -184,6 +197,19 @@ fn load_planned_meals(recipes: &Vec<Recipe>, path: &str) -> Result<Vec<PlannedMe
     Ok(planned_meals)
 }
 
+fn ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, Quantity> {
+    let mut planned_ingredients: HashMap<Product, Quantity> = HashMap::new();
+    for planned_meal in planned_meals {
+        for (product, quantity) in &planned_meal.recipe.ingredients {
+            println!("p: {:?} q: {:?}", &product, &quantity);
+            planned_ingredients.entry(product.clone())
+                .and_modify(|q| { *q = q.clone() + quantity.clone() })
+                .or_insert(quantity.clone());
+        }
+    }
+    planned_ingredients
+}
+
 fn run() -> Result<()> {
     let departments: Vec<Department> = load_departments("inputs/departments.csv")?;
     let products: Vec<Product> = load_products(&departments, "inputs/products.csv")?;
@@ -191,12 +217,16 @@ fn run() -> Result<()> {
     let inventory: HashMap<Product, Quantity> = load_ingredients(&products, "inputs/inventory.csv")?;
     let planned_meals: Vec<PlannedMeal> = load_planned_meals(&recipes, "inputs/plan.csv")?;
 
+    let planned_ingredients = ingredients(&planned_meals);
+
     println!("products: {:?}", products);
     println!("departments: {:?}", departments);
     println!("recipes: {:?}", recipes);
     println!("inventory: {:?}", inventory);
     println!("planned_meals: {:?}", planned_meals);
-    
+    println!("planned_ingredients: {:?}", planned_ingredients);
+
+
     Ok(())
 }
 
