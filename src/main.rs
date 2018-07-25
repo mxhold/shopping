@@ -5,14 +5,14 @@ extern crate serde_derive;
 #[macro_use]
 extern crate error_chain;
 
-use std::fs::File;
-use std::fmt;
 use std::collections::HashMap;
+use std::fmt;
+use std::fs::File;
+use std::ops::{Add, Sub};
 use std::path::Path;
-use std::ops::Add;
 
-mod errors{
-    error_chain! { }
+mod errors {
+    error_chain!{}
 }
 
 use errors::*;
@@ -39,8 +39,15 @@ impl Add for Quantity {
     type Output = Quantity;
 
     fn add(self, other: Quantity) -> Quantity {
-        println!("adding: {:?} + {:?}", &self, &other);
         Quantity(format!("{}+{}", self.0, other.0))
+    }
+}
+
+impl Sub for Quantity {
+    type Output = Quantity;
+
+    fn sub(self, other: Quantity) -> Quantity {
+        Quantity(format!("{}-{}", self.0, other.0))
     }
 }
 
@@ -95,7 +102,7 @@ struct PlannedMeal {
     recipe: Recipe,
 }
 
-fn load_departments(path: &str) -> Result<Vec<Department>>  {
+fn load_departments(path: &str) -> Result<Vec<Department>> {
     let file = File::open(&path).chain_err(|| "unable to open departments file")?;
     let mut reader = csv::Reader::from_reader(file);
     let mut departments: Vec<Department> = Vec::new();
@@ -124,7 +131,9 @@ fn load_recipes(products: &Vec<Product>, path: &str) -> Result<Vec<Recipe>> {
     let mut recipes: Vec<Recipe> = Vec::new();
     for result in csv_reader(&path)?.deserialize() {
         let unresolved_recipe: UnresolvedRecipe = result.chain_err(|| "unable to parse recipe")?;
-        let recipe = unresolved_recipe.resolve(products).chain_err(|| "unable to resolve recipe")?;
+        let recipe = unresolved_recipe
+            .resolve(products)
+            .chain_err(|| "unable to resolve recipe")?;
 
         recipes.push(recipe);
     }
@@ -143,7 +152,10 @@ impl UnresolvedRecipe {
     }
 }
 
-fn load_ingredients<P: AsRef<Path> + fmt::Debug>(products: &Vec<Product>, path: P) -> Result<HashMap<Product, Quantity>> {
+fn load_ingredients<P: AsRef<Path> + fmt::Debug>(
+    products: &Vec<Product>,
+    path: P,
+) -> Result<HashMap<Product, Quantity>> {
     let mut ingredients: HashMap<Product, Quantity> = HashMap::new();
 
     for result in csv_reader(&path)?.deserialize() {
@@ -156,9 +168,7 @@ fn load_ingredients<P: AsRef<Path> + fmt::Debug>(products: &Vec<Product>, path: 
                 }
                 ingredients.insert(product.clone(), ingredient.quantity);
             }
-            None => {
-                bail!("unrecognized ingredient \"{}\"", ingredient.ingredient)
-            }
+            None => bail!("unrecognized ingredient \"{}\"", ingredient.ingredient),
         }
     }
 
@@ -171,7 +181,6 @@ fn csv_reader<P: AsRef<Path> + fmt::Debug>(path: P) -> Result<csv::Reader<File>>
 
 impl UnresolvedPlannedMeal {
     fn resolve(self, recipes: &Vec<Recipe>) -> Result<PlannedMeal> {
-
         let recipe = recipes.iter().find(|r| r.name == self.recipe);
 
         if recipe.is_none() {
@@ -189,35 +198,57 @@ impl UnresolvedPlannedMeal {
 fn load_planned_meals(recipes: &Vec<Recipe>, path: &str) -> Result<Vec<PlannedMeal>> {
     let mut planned_meals: Vec<PlannedMeal> = Vec::new();
     for result in csv_reader(&path)?.deserialize() {
-        let unresolved_planned_meal: UnresolvedPlannedMeal = result.chain_err(|| "unable to parse plan")?;
-        let planned_meal: PlannedMeal = unresolved_planned_meal.resolve(recipes).chain_err(|| "unable to resolve plan")?;
+        let unresolved_planned_meal: UnresolvedPlannedMeal =
+            result.chain_err(|| "unable to parse plan")?;
+        let planned_meal: PlannedMeal = unresolved_planned_meal
+            .resolve(recipes)
+            .chain_err(|| "unable to resolve plan")?;
 
         planned_meals.push(planned_meal);
     }
     Ok(planned_meals)
 }
 
-fn ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, Quantity> {
+fn sum_ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, Quantity> {
     let mut planned_ingredients: HashMap<Product, Quantity> = HashMap::new();
     for planned_meal in planned_meals {
         for (product, quantity) in &planned_meal.recipe.ingredients {
-            println!("p: {:?} q: {:?}", &product, &quantity);
-            planned_ingredients.entry(product.clone())
-                .and_modify(|q| { *q = q.clone() + quantity.clone() })
+            planned_ingredients
+                .entry(product.clone())
+                .and_modify(|q| *q = q.clone() + quantity.clone())
                 .or_insert(quantity.clone());
         }
     }
     planned_ingredients
 }
 
+fn subtract_ingredients(
+    // these argument names are maybe a little too cute...
+    subtrahend_ingredients: &HashMap<Product, Quantity>,
+    minuend_ingredients: &HashMap<Product, Quantity>,
+) -> HashMap<Product, Quantity> {
+    let mut difference: HashMap<Product, Quantity> = HashMap::new();
+    for (product, subtrahend_quantity) in subtrahend_ingredients.iter() {
+        let quantity_difference = match minuend_ingredients.get(product) {
+            Some(minuend_quantity) => subtrahend_quantity.clone() - minuend_quantity.clone(),
+            None => subtrahend_quantity.clone(),
+        };
+        difference.insert(product.clone(), quantity_difference);
+    }
+    difference
+}
+
 fn run() -> Result<()> {
     let departments: Vec<Department> = load_departments("inputs/departments.csv")?;
     let products: Vec<Product> = load_products(&departments, "inputs/products.csv")?;
     let recipes: Vec<Recipe> = load_recipes(&products, "inputs/recipes.csv")?;
-    let inventory: HashMap<Product, Quantity> = load_ingredients(&products, "inputs/inventory.csv")?;
+    let inventory: HashMap<Product, Quantity> =
+        load_ingredients(&products, "inputs/inventory.csv")?;
     let planned_meals: Vec<PlannedMeal> = load_planned_meals(&recipes, "inputs/plan.csv")?;
 
-    let planned_ingredients = ingredients(&planned_meals);
+    let planned_ingredients = sum_ingredients(&planned_meals);
+
+    let ingredients_to_buy = subtract_ingredients(&planned_ingredients, &inventory);
 
     println!("products: {:?}", products);
     println!("departments: {:?}", departments);
@@ -225,7 +256,7 @@ fn run() -> Result<()> {
     println!("inventory: {:?}", inventory);
     println!("planned_meals: {:?}", planned_meals);
     println!("planned_ingredients: {:?}", planned_ingredients);
-
+    println!("ingredients_to_buy: {:?}", ingredients_to_buy);
 
     Ok(())
 }
