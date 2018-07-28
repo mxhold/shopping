@@ -5,7 +5,7 @@ use std::path::Path;
 
 use errors::*;
 
-use {Department, PlannedMeal, Product, Quantity, Recipe, Result, Day, Meal};
+use {Day, Department, Meal, PlannedMeal, Product, Quantity, Recipe, Result};
 
 #[derive(Debug, Deserialize)]
 struct UnresolvedIngredient {
@@ -104,7 +104,9 @@ pub(super) fn load_planned_meals(recipes: &Vec<Recipe>, path: &str) -> Result<Ve
         let unresolved_planned_meal: UnresolvedPlannedMeal =
             result.chain_err(|| "unable to parse plan")?;
 
-        let recipe = recipes.iter().find(|r| r.name == unresolved_planned_meal.recipe);
+        let recipe = recipes
+            .iter()
+            .find(|r| r.name == unresolved_planned_meal.recipe);
 
         if recipe.is_none() {
             bail!("unrecognized recipe \"{}\"", unresolved_planned_meal.recipe);
