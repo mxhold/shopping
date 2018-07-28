@@ -1,12 +1,12 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
-use std::collections::HashMap;
 use std::path::Path;
 
-use ::errors::*;
+use errors::*;
 
-use ::{Result, Department, Product, Recipe, Quantity, PlannedMeal};
-use ::{UnresolvedIngredient, UnresolvedRecipe, UnresolvedPlannedMeal};
+use {Department, PlannedMeal, Product, Quantity, Recipe, Result};
+use {UnresolvedIngredient, UnresolvedPlannedMeal, UnresolvedRecipe};
 
 fn reader<P: AsRef<Path> + fmt::Debug>(path: P) -> Result<::csv_crate::Reader<File>> {
     ::csv_crate::Reader::from_path(&path).chain_err(|| format!("unable to open file #{:?}", &path))
@@ -35,19 +35,27 @@ pub(super) fn load_products(departments: &Vec<Department>, path: &str) -> Result
     Ok(products)
 }
 
-pub(super) fn load_recipes(products: &Vec<Product>, path: &str) -> Result<Vec<Recipe>> {
+pub(super) fn load_recipes(
+    products: &Vec<Product>,
+    path: &str,
+    recipes_dir: &str,
+) -> Result<Vec<Recipe>> {
     let mut recipes: Vec<Recipe> = Vec::new();
     for result in reader(&path)?.deserialize() {
         let unresolved_recipe: UnresolvedRecipe = result.chain_err(|| "unable to parse recipe")?;
-        let recipe = unresolved_recipe
-            .resolve(products)
-            .chain_err(|| "unable to resolve recipe")?;
+        let filepath = Path::new(&recipes_dir).join(unresolved_recipe.filename);
+        let ingredients: HashMap<Product, Quantity> =
+            load_ingredients(&products, filepath).chain_err(|| "unable to resolve recipe")?;
+
+        let recipe = Recipe {
+            name: unresolved_recipe.name,
+            ingredients: ingredients,
+        };
 
         recipes.push(recipe);
     }
     Ok(recipes)
 }
-
 
 pub(super) fn load_ingredients<P: AsRef<Path> + fmt::Debug>(
     products: &Vec<Product>,

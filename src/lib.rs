@@ -8,7 +8,6 @@ extern crate error_chain;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::{Add, Sub};
-use std::path::Path;
 
 mod errors {
     error_chain!{}
@@ -103,18 +102,6 @@ struct PlannedMeal {
     recipe: Recipe,
 }
 
-impl UnresolvedRecipe {
-    fn resolve(self, products: &Vec<Product>) -> Result<Recipe> {
-        let filepath = Path::new("inputs/recipes").join(self.filename);
-        let ingredients: HashMap<Product, Quantity> = csv::load_ingredients(&products, filepath)?;
-
-        Ok(Recipe {
-            name: self.name,
-            ingredients,
-        })
-    }
-}
-
 impl UnresolvedPlannedMeal {
     fn resolve(self, recipes: &Vec<Recipe>) -> Result<PlannedMeal> {
         let recipe = recipes.iter().find(|r| r.name == self.recipe);
@@ -163,7 +150,8 @@ fn subtract_ingredients(
 pub fn run() -> Result<()> {
     let departments: Vec<Department> = csv::load_departments("inputs/departments.csv")?;
     let products: Vec<Product> = csv::load_products(&departments, "inputs/products.csv")?;
-    let recipes: Vec<Recipe> = csv::load_recipes(&products, "inputs/recipes.csv")?;
+    let recipes: Vec<Recipe> =
+        csv::load_recipes(&products, "inputs/recipes.csv", "inputs/recipes")?;
     let inventory: HashMap<Product, Quantity> =
         csv::load_ingredients(&products, "inputs/inventory.csv")?;
     let planned_meals: Vec<PlannedMeal> = csv::load_planned_meals(&recipes, "inputs/plan.csv")?;
