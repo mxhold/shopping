@@ -51,18 +51,6 @@ impl Sub for Quantity {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct UnresolvedIngredient {
-    ingredient: String,
-    quantity: Quantity,
-}
-
-#[derive(Debug, Deserialize)]
-struct UnresolvedRecipe {
-    name: String,
-    filename: String,
-}
-
 #[derive(Debug, Clone)]
 struct Recipe {
     name: String,
@@ -86,13 +74,6 @@ enum Meal {
     Lunch,
     Dinner,
     Snack,
-}
-
-#[derive(Debug, Deserialize)]
-struct UnresolvedPlannedMeal {
-    day: Day,
-    meal: Meal,
-    recipe: String,
 }
 
 #[derive(Debug)]

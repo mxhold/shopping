@@ -5,8 +5,26 @@ use std::path::Path;
 
 use errors::*;
 
-use {Department, PlannedMeal, Product, Quantity, Recipe, Result};
-use {UnresolvedIngredient, UnresolvedPlannedMeal, UnresolvedRecipe};
+use {Department, PlannedMeal, Product, Quantity, Recipe, Result, Day, Meal};
+
+#[derive(Debug, Deserialize)]
+struct UnresolvedIngredient {
+    ingredient: String,
+    quantity: Quantity,
+}
+
+#[derive(Debug, Deserialize)]
+struct UnresolvedRecipe {
+    name: String,
+    filename: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct UnresolvedPlannedMeal {
+    day: Day,
+    meal: Meal,
+    recipe: String,
+}
 
 fn reader<P: AsRef<Path> + fmt::Debug>(path: P) -> Result<::csv_crate::Reader<File>> {
     ::csv_crate::Reader::from_path(&path).chain_err(|| format!("unable to open file #{:?}", &path))
