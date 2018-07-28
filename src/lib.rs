@@ -102,22 +102,6 @@ struct PlannedMeal {
     recipe: Recipe,
 }
 
-impl UnresolvedPlannedMeal {
-    fn resolve(self, recipes: &Vec<Recipe>) -> Result<PlannedMeal> {
-        let recipe = recipes.iter().find(|r| r.name == self.recipe);
-
-        if recipe.is_none() {
-            bail!("unrecognized recipe \"{}\"", self.recipe);
-        }
-
-        Ok(PlannedMeal {
-            day: self.day,
-            meal: self.meal,
-            recipe: recipe.unwrap().clone(),
-        })
-    }
-}
-
 fn sum_ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, Quantity> {
     let mut planned_ingredients: HashMap<Product, Quantity> = HashMap::new();
     for planned_meal in planned_meals {

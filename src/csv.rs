@@ -85,9 +85,18 @@ pub(super) fn load_planned_meals(recipes: &Vec<Recipe>, path: &str) -> Result<Ve
     for result in reader(&path)?.deserialize() {
         let unresolved_planned_meal: UnresolvedPlannedMeal =
             result.chain_err(|| "unable to parse plan")?;
-        let planned_meal: PlannedMeal = unresolved_planned_meal
-            .resolve(recipes)
-            .chain_err(|| "unable to resolve plan")?;
+
+        let recipe = recipes.iter().find(|r| r.name == unresolved_planned_meal.recipe);
+
+        if recipe.is_none() {
+            bail!("unrecognized recipe \"{}\"", unresolved_planned_meal.recipe);
+        }
+
+        let planned_meal = PlannedMeal {
+            day: unresolved_planned_meal.day,
+            meal: unresolved_planned_meal.meal,
+            recipe: recipe.unwrap().clone(),
+        };
 
         planned_meals.push(planned_meal);
     }
