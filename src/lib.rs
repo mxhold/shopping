@@ -7,7 +7,6 @@ extern crate error_chain;
 
 use std::collections::HashMap;
 use std::fmt;
-use std::ops::{Add, Sub};
 
 mod errors {
     error_chain!{}
@@ -16,6 +15,9 @@ mod errors {
 use errors::*;
 
 mod csv;
+mod quantity;
+
+use quantity::Quantity;
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Hash, Clone)]
 struct Department(String);
@@ -30,25 +32,6 @@ impl fmt::Display for Department {
 struct Product {
     name: String,
     department: Department,
-}
-
-#[derive(Debug, Deserialize, PartialEq, Clone)]
-struct Quantity(String);
-
-impl Add for Quantity {
-    type Output = Quantity;
-
-    fn add(self, other: Quantity) -> Quantity {
-        Quantity(format!("{}+{}", self.0, other.0))
-    }
-}
-
-impl Sub for Quantity {
-    type Output = Quantity;
-
-    fn sub(self, other: Quantity) -> Quantity {
-        Quantity(format!("{}-{}", self.0, other.0))
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -89,7 +72,7 @@ fn sum_ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, Quantit
         for (product, quantity) in &planned_meal.recipe.ingredients {
             planned_ingredients
                 .entry(product.clone())
-                .and_modify(|q| *q = q.clone() + quantity.clone())
+                .and_modify(|q| *q = q.clone() + quantity)
                 .or_insert(quantity.clone());
         }
     }
@@ -104,7 +87,7 @@ fn subtract_ingredients(
     let mut difference: HashMap<Product, Quantity> = HashMap::new();
     for (product, subtrahend_quantity) in subtrahend_ingredients.iter() {
         let quantity_difference = match minuend_ingredients.get(product) {
-            Some(minuend_quantity) => subtrahend_quantity.clone() - minuend_quantity.clone(),
+            Some(minuend_quantity) => subtrahend_quantity.clone() - minuend_quantity,
             None => subtrahend_quantity.clone(),
         };
         difference.insert(product.clone(), quantity_difference);
