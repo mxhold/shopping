@@ -5,7 +5,7 @@ use std::path::Path;
 
 use errors::*;
 
-use {Day, Department, Meal, PlannedMeal, Product, Quantity, Recipe, Result};
+use {Day, Department, Meal, PlannedMeal, Product, Quantity, RQuantity, Recipe, Result};
 
 #[derive(Debug, Deserialize)]
 struct UnresolvedIngredient {
@@ -62,7 +62,7 @@ pub(super) fn load_recipes(
     for result in reader(&path)?.deserialize() {
         let unresolved_recipe: UnresolvedRecipe = result.chain_err(|| "unable to parse recipe")?;
         let filepath = Path::new(&recipes_dir).join(unresolved_recipe.filename);
-        let ingredients: HashMap<Product, Quantity> =
+        let ingredients: HashMap<Product, RQuantity> =
             load_ingredients(&products, filepath).chain_err(|| "unable to resolve recipe")?;
 
         let recipe = Recipe {
@@ -78,8 +78,8 @@ pub(super) fn load_recipes(
 pub(super) fn load_ingredients<P: AsRef<Path> + fmt::Debug>(
     products: &Vec<Product>,
     path: P,
-) -> Result<HashMap<Product, Quantity>> {
-    let mut ingredients: HashMap<Product, Quantity> = HashMap::new();
+) -> Result<HashMap<Product, RQuantity>> {
+    let mut ingredients: HashMap<Product, RQuantity> = HashMap::new();
 
     for result in reader(&path)?.deserialize() {
         let ingredient: UnresolvedIngredient = result.chain_err(|| "unable to parse ingredient")?;
@@ -89,7 +89,7 @@ pub(super) fn load_ingredients<P: AsRef<Path> + fmt::Debug>(
                 if ingredients.contains_key(&product) {
                     bail!("encountered duplicate ingredient `{:?}`", product)
                 }
-                ingredients.insert(product.clone(), ingredient.quantity);
+                ingredients.insert(product.clone(), RQuantity::new(&ingredient.quantity.0));
             }
             None => bail!("unrecognized ingredient \"{}\"", ingredient.ingredient),
         }

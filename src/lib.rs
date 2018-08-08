@@ -4,6 +4,8 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate error_chain;
+extern crate num_rational;
+extern crate regex;
 
 use std::collections::HashMap;
 use std::fmt;
@@ -18,6 +20,7 @@ mod csv;
 mod quantity;
 
 use quantity::Quantity;
+use quantity::RQuantity;
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Hash, Clone)]
 struct Department(String);
@@ -37,7 +40,7 @@ struct Product {
 #[derive(Debug, Clone)]
 struct Recipe {
     name: String,
-    ingredients: HashMap<Product, Quantity>,
+    ingredients: HashMap<Product, RQuantity>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,8 +69,8 @@ struct PlannedMeal {
     recipe: Recipe,
 }
 
-fn sum_ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, Quantity> {
-    let mut planned_ingredients: HashMap<Product, Quantity> = HashMap::new();
+fn sum_ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, RQuantity> {
+    let mut planned_ingredients: HashMap<Product, RQuantity> = HashMap::new();
     for planned_meal in planned_meals {
         for (product, quantity) in &planned_meal.recipe.ingredients {
             planned_ingredients
@@ -81,10 +84,10 @@ fn sum_ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, Quantit
 
 fn subtract_ingredients(
     // these argument names are maybe a little too cute...
-    subtrahend_ingredients: &HashMap<Product, Quantity>,
-    minuend_ingredients: &HashMap<Product, Quantity>,
-) -> HashMap<Product, Quantity> {
-    let mut difference: HashMap<Product, Quantity> = HashMap::new();
+    subtrahend_ingredients: &HashMap<Product, RQuantity>,
+    minuend_ingredients: &HashMap<Product, RQuantity>,
+) -> HashMap<Product, RQuantity> {
+    let mut difference: HashMap<Product, RQuantity> = HashMap::new();
     for (product, subtrahend_quantity) in subtrahend_ingredients.iter() {
         let quantity_difference = match minuend_ingredients.get(product) {
             Some(minuend_quantity) => subtrahend_quantity.clone() - minuend_quantity,
@@ -100,7 +103,7 @@ pub fn run() -> Result<()> {
     let products: Vec<Product> = csv::load_products(&departments, "inputs/products.csv")?;
     let recipes: Vec<Recipe> =
         csv::load_recipes(&products, "inputs/recipes.csv", "inputs/recipes")?;
-    let inventory: HashMap<Product, Quantity> =
+    let inventory: HashMap<Product, RQuantity> =
         csv::load_ingredients(&products, "inputs/inventory.csv")?;
     let planned_meals: Vec<PlannedMeal> = csv::load_planned_meals(&recipes, "inputs/plan.csv")?;
 
