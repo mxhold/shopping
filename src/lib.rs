@@ -6,6 +6,8 @@ extern crate serde_derive;
 extern crate error_chain;
 extern crate num_rational;
 extern crate regex;
+#[macro_use]
+extern crate lazy_static;
 
 use std::collections::HashMap;
 use std::fmt;

@@ -43,13 +43,15 @@ pub struct RQuantity {
 
 impl RQuantity {
     pub fn new(string: &str) -> RQuantity {
-        let re =
-            Regex::new(r"\A(?P<num>\d+)(/(?P<denom>\d+))?(?P<unit>\w+)\z").expect("invalid regex");
+        lazy_static! {
+            static ref RE: Regex =
+                Regex::new(r"\A(?P<num>\d+)(/(?P<denom>\d+))?(?P<unit>\w+)\z").unwrap();
+        }
 
         let mut value: Option<Rational32> = None;
         let mut unit: Option<QuantityUnit> = None;
 
-        for caps in re.captures_iter(string) {
+        for caps in RE.captures_iter(string) {
             let num = caps.name("num").expect("missing numerator");
             let num: i32 = num.as_str().parse().expect("numerator must be i32");
             let denom: i32 = match caps.name("denom") {
