@@ -5,7 +5,10 @@ use std::path::Path;
 
 use errors::*;
 
-use {Day, Department, Meal, PlannedMeal, Product, Quantity, RQuantity, Recipe, Result};
+use {Day, Department, Meal, PlannedMeal, Product, RQuantity, Recipe, Result};
+
+#[derive(Debug, Deserialize, PartialEq, Clone)]
+struct Quantity(String);
 
 #[derive(Debug, Deserialize)]
 struct UnresolvedIngredient {

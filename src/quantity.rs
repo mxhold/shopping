@@ -1,29 +1,7 @@
 use num_rational::Rational32;
 use regex::Regex;
 use std::ops::{Add, Sub};
-
-#[derive(Debug, Deserialize, PartialEq, Clone)]
-pub struct Quantity(pub String);
-
-impl<'a> Add<&'a Quantity> for Quantity {
-    type Output = Quantity;
-
-    fn add(mut self, other: &Quantity) -> Quantity {
-        self.0.push_str("+");
-        self.0.push_str(&other.0);
-        self
-    }
-}
-
-impl<'a> Sub<&'a Quantity> for Quantity {
-    type Output = Quantity;
-
-    fn sub(mut self, other: &Quantity) -> Quantity {
-        self.0.push_str("-");
-        self.0.push_str(&other.0);
-        self
-    }
-}
+use std::fmt;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum QuantityUnit {
@@ -33,6 +11,19 @@ enum QuantityUnit {
     Gram,
     Count,
     Pound,
+}
+
+impl fmt::Display for QuantityUnit {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &QuantityUnit::Tablespoon => write!(f, "T"),
+            &QuantityUnit::Teaspoon => write!(f, "t"),
+            &QuantityUnit::Cup => write!(f, "c"),
+            &QuantityUnit::Gram => write!(f, "g"),
+            &QuantityUnit::Count => write!(f, "ct"),
+            &QuantityUnit::Pound => write!(f, "lb"),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -76,6 +67,16 @@ impl RQuantity {
             unit: unit.expect("unit failed to parse"),
             value: value.expect("quantity failed to parse"),
         }
+    }
+
+    pub fn is_positive(&self) -> bool {
+        self.value > Rational32::from_integer(0)
+    }
+}
+
+impl fmt::Display for RQuantity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}", self.value, self.unit)
     }
 }
 

@@ -21,7 +21,6 @@ use errors::*;
 mod csv;
 mod quantity;
 
-use quantity::Quantity;
 use quantity::RQuantity;
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Hash, Clone)]
@@ -37,6 +36,12 @@ impl fmt::Display for Department {
 struct Product {
     name: String,
     department: Department,
+}
+
+impl fmt::Display for Product {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -120,6 +125,13 @@ pub fn run() -> Result<()> {
     println!("planned_meals: {:?}", planned_meals);
     println!("planned_ingredients: {:?}", planned_ingredients);
     println!("ingredients_to_buy: {:?}", ingredients_to_buy);
+
+    println!("=========================================");
+    for (product, quantity) in ingredients_to_buy {
+        if quantity.is_positive() {
+            println!("{} {}", quantity, product);
+        }
+    }
 
     Ok(())
 }
