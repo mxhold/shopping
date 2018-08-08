@@ -77,8 +77,8 @@ fn sum_ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, RQuanti
         for (product, quantity) in &planned_meal.recipe.ingredients {
             planned_ingredients
                 .entry(product.clone())
-                .and_modify(|q| *q = q.clone() + quantity)
-                .or_insert(quantity.clone());
+                .and_modify(|q| *q = *q + quantity)
+                .or_insert(*quantity);
         }
     }
     planned_ingredients
@@ -92,8 +92,8 @@ fn subtract_ingredients(
     let mut difference: HashMap<Product, RQuantity> = HashMap::new();
     for (product, subtrahend_quantity) in subtrahend_ingredients.iter() {
         let quantity_difference = match minuend_ingredients.get(product) {
-            Some(minuend_quantity) => subtrahend_quantity.clone() - minuend_quantity,
-            None => subtrahend_quantity.clone(),
+            Some(minuend_quantity) => *subtrahend_quantity - minuend_quantity,
+            None => *subtrahend_quantity,
         };
         difference.insert(product.clone(), quantity_difference);
     }

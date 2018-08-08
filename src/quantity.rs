@@ -25,7 +25,7 @@ impl<'a> Sub<&'a Quantity> for Quantity {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum QuantityUnit {
     Tablespoon,
     Teaspoon,
@@ -35,7 +35,7 @@ enum QuantityUnit {
     Pound,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct RQuantity {
     unit: QuantityUnit,
     value: Rational32,
@@ -82,19 +82,22 @@ impl RQuantity {
 impl<'a> Add<&'a RQuantity> for RQuantity {
     type Output = RQuantity;
 
-    fn add(mut self, other: &RQuantity) -> RQuantity {
+    fn add(self, other: &RQuantity) -> RQuantity {
         // TODO: check that units match
-        self.value = self.value + other.value;
-        self
+        RQuantity {
+            value: self.value + other.value,
+            unit: self.unit,
+        }
     }
 }
 
 impl<'a> Sub<&'a RQuantity> for RQuantity {
     type Output = RQuantity;
 
-    fn sub(mut self, other: &RQuantity) -> RQuantity {
-        // TODO: check that units match
-        self.value = self.value - other.value;
-        self
+    fn sub(self, other: &RQuantity) -> RQuantity {
+        RQuantity {
+            value: self.value - other.value,
+            unit: self.unit,
+        }
     }
 }
