@@ -1,7 +1,7 @@
 use num_rational::Rational32;
 use regex::Regex;
-use std::ops::{Add, Sub};
 use std::fmt;
+use std::ops::{Add, Sub};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum QuantityUnit {

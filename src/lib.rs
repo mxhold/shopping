@@ -90,7 +90,6 @@ fn sum_ingredients(planned_meals: &Vec<PlannedMeal>) -> HashMap<Product, RQuanti
 }
 
 fn subtract_ingredients(
-    // these argument names are maybe a little too cute...
     subtrahend_ingredients: &HashMap<Product, RQuantity>,
     minuend_ingredients: &HashMap<Product, RQuantity>,
 ) -> HashMap<Product, RQuantity> {
@@ -127,11 +126,38 @@ pub fn run() -> Result<()> {
     println!("ingredients_to_buy: {:?}", ingredients_to_buy);
 
     println!("=========================================");
+
+    let mut ingredients_to_buy_by_department: HashMap<Department, Vec<(Product, RQuantity)>> =
+        HashMap::new();
     for (product, quantity) in ingredients_to_buy {
-        if quantity.is_positive() {
-            println!("{} {}", quantity, product);
+        let entry = ingredients_to_buy_by_department.entry(product.department.clone());
+        entry.or_insert(Vec::new()).push((product, quantity));
+    }
+
+    let mut sorted_departments: Vec<Department> =
+        ingredients_to_buy_by_department.keys().cloned().collect();
+    sorted_departments
+        .sort_unstable_by_key(|sd| departments.iter().position(|ref d| d.0 == sd.0).unwrap());
+
+    for department in sorted_departments {
+        println!("## {}", department);
+        let ingredients: &Vec<(Product, RQuantity)> =
+            ingredients_to_buy_by_department.get(&department).unwrap();
+        for (product, quantity) in ingredients {
+            if quantity.is_positive() {
+                println!("{} {}", quantity, product);
+            }
         }
     }
+
+    //    for (department, ingredients) in ingredients_to_buy_by_department {
+    //        println!("## {}", department);
+    //        for (product, quantity) in ingredients {
+    //            if quantity.is_positive() {
+    //                println!("{} {}", quantity, product);
+    //            }
+    //        }
+    //    }
 
     Ok(())
 }
